@@ -7,6 +7,11 @@
 #include <functional>
 #include <iostream>
 #include <type_traits>
+#include <unistd.h>
+
+#if !defined(SVE_LEN)
+#define SVE_LEN 128
+#endif
 
 namespace sve_impl {
     template <typename T>
@@ -14,109 +19,84 @@ namespace sve_impl {
     {
     };
 
-    static constexpr int max_vector_pack_size = 64;
-    typedef svbool_t Predicate __attribute__((arm_sve_vector_bits(512)));
+    static constexpr int max_vector_pack_size = SVE_LEN/8;
+    typedef svbool_t Predicate __attribute__((arm_sve_vector_bits(SVE_LEN)));
 
     // ----------------------------------------------------------------------
     template <>
     struct simd_impl<int8_t>
     {
-        typedef svint8_t Vector __attribute__((arm_sve_vector_bits(512)));
-        static constexpr std::size_t size =
-            max_vector_pack_size / sizeof(int8_t);
+        typedef svint8_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
+        static constexpr std::size_t size = max_vector_pack_size / sizeof(int8_t);
 
         inline static constexpr auto pred_all_true = svptrue_b8;
         inline static constexpr auto pred_next = svpnext_b8;
         inline static constexpr auto pred_pat_true = svptrue_pat_b8;
         inline static constexpr auto pred_count = svcntp_b8;
         inline static constexpr auto set_helper = svdup_s8_m;
-
-        static inline Vector fill(int8_t val)
-        {
-            return svdup_s8(val);
-        }
+        inline static constexpr auto fill_helper = svdup_s8;
     };
 
     template <>
     struct simd_impl<uint8_t>
     {
-        typedef svuint8_t Vector __attribute__((arm_sve_vector_bits(512)));
-        static constexpr std::size_t size =
-            max_vector_pack_size / sizeof(uint8_t);
+        typedef svuint8_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
+        static constexpr std::size_t size = max_vector_pack_size / sizeof(uint8_t);
 
         inline static constexpr auto pred_all_true = svptrue_b8;
         inline static constexpr auto pred_next = svpnext_b8;
         inline static constexpr auto pred_pat_true = svptrue_pat_b8;
         inline static constexpr auto pred_count = svcntp_b8;
         inline static constexpr auto set_helper = svdup_u8_m;
-
-        static inline Vector fill(uint8_t val)
-        {
-            return svdup_u8(val);
-        }
+        inline static constexpr auto fill_helper = svdup_u8;
     };
 
     template <>
     struct simd_impl<int16_t>
     {
-        typedef svint16_t Vector __attribute__((arm_sve_vector_bits(512)));
-        static constexpr std::size_t size =
-            max_vector_pack_size / sizeof(int16_t);
+        typedef svint16_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
+        static constexpr std::size_t size = max_vector_pack_size / sizeof(int16_t);
 
         inline static constexpr auto pred_all_true = svptrue_b16;
         inline static constexpr auto pred_next = svpnext_b16;
         inline static constexpr auto pred_pat_true = svptrue_pat_b16;
         inline static constexpr auto pred_count = svcntp_b16;
         inline static constexpr auto set_helper = svdup_s16_m;
-
-        static inline Vector fill(int16_t val)
-        {
-            return svdup_s16(val);
-        }
+        inline static constexpr auto fill_helper = svdup_s16;
     };
 
     template <>
     struct simd_impl<uint16_t>
     {
-        typedef svuint16_t Vector __attribute__((arm_sve_vector_bits(512)));
-        static constexpr std::size_t size =
-            max_vector_pack_size / sizeof(uint16_t);
+        typedef svuint16_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
+        static constexpr std::size_t size = max_vector_pack_size / sizeof(uint16_t);
 
         inline static constexpr auto pred_all_true = svptrue_b16;
         inline static constexpr auto pred_next = svpnext_b16;
         inline static constexpr auto pred_pat_true = svptrue_pat_b16;
         inline static constexpr auto pred_count = svcntp_b16;
         inline static constexpr auto set_helper = svdup_u16_m;
-
-        static inline Vector fill(uint16_t val)
-        {
-            return svdup_u16(val);
-        }
+        inline static constexpr auto fill_helper = svdup_u16;
     };
 
     template <>
     struct simd_impl<int32_t>
     {
-        typedef svint32_t Vector __attribute__((arm_sve_vector_bits(512)));
-        static constexpr std::size_t size =
-            max_vector_pack_size / sizeof(int32_t);
+        typedef svint32_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
+        static constexpr std::size_t size = max_vector_pack_size / sizeof(int32_t);
 
         inline static constexpr auto pred_all_true = svptrue_b32;
         inline static constexpr auto pred_next = svpnext_b32;
         inline static constexpr auto pred_pat_true = svptrue_pat_b32;
         inline static constexpr auto pred_count = svcntp_b32;
         inline static constexpr auto set_helper = svdup_s32_m;
-
-        static inline Vector fill(int32_t val)
-        {
-            return svdup_s32(val);
-        }
+        inline static constexpr auto fill_helper = svdup_s32;
     };
 
     template <>
     struct simd_impl<uint32_t>
     {
-        typedef svuint32_t Vector __attribute__((arm_sve_vector_bits(512)));
+        typedef svuint32_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
         static constexpr std::size_t size =
             max_vector_pack_size / sizeof(uint32_t);
 
@@ -125,107 +105,79 @@ namespace sve_impl {
         inline static constexpr auto pred_pat_true = svptrue_pat_b32;
         inline static constexpr auto pred_count = svcntp_b32;
         inline static constexpr auto set_helper = svdup_u32_m;
-
-        static inline Vector fill(uint32_t val)
-        {
-            return svdup_u32(val);
-        }
+        inline static constexpr auto fill_helper = svdup_u32;
     };
 
     template <>
     struct simd_impl<int64_t>
     {
-        typedef svint64_t Vector __attribute__((arm_sve_vector_bits(512)));
-        static constexpr std::size_t size =
-            max_vector_pack_size / sizeof(int64_t);
+        typedef svint64_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
+        static constexpr std::size_t size = max_vector_pack_size / sizeof(int64_t);
 
         inline static constexpr auto pred_all_true = svptrue_b64;
         inline static constexpr auto pred_next = svpnext_b64;
         inline static constexpr auto pred_pat_true = svptrue_pat_b64;
         inline static constexpr auto pred_count = svcntp_b64;
         inline static constexpr auto set_helper = svdup_s64_m;
-
-        static inline Vector fill(int64_t val)
-        {
-            return svdup_s64(val);
-        }
+        inline static constexpr auto fill_helper = svdup_s64;
     };
 
     template <>
     struct simd_impl<uint64_t>
     {
-        typedef svuint64_t Vector __attribute__((arm_sve_vector_bits(512)));
-        static constexpr std::size_t size =
-            max_vector_pack_size / sizeof(uint64_t);
+        typedef svuint64_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
+        static constexpr std::size_t size = max_vector_pack_size / sizeof(uint64_t);
 
         inline static constexpr auto pred_all_true = svptrue_b64;
         inline static constexpr auto pred_next = svpnext_b64;
         inline static constexpr auto pred_pat_true = svptrue_pat_b64;
         inline static constexpr auto pred_count = svcntp_b64;
         inline static constexpr auto set_helper = svdup_u64_m;
-
-        static inline Vector fill(uint64_t val)
-        {
-            return svdup_u64(val);
-        }
+        inline static constexpr auto fill_helper = svdup_u64;
     };
 
     // ----------------------------------------------------------------------
     template <>
     struct simd_impl<float16_t>
     {
-        typedef svfloat16_t Vector __attribute__((arm_sve_vector_bits(512)));
-        static constexpr std::size_t size =
-            max_vector_pack_size / sizeof(float16_t);
+        typedef svfloat16_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
+        static constexpr std::size_t size = max_vector_pack_size / sizeof(float16_t);
 
         inline static constexpr auto pred_all_true = svptrue_b16;
         inline static constexpr auto pred_next = svpnext_b16;
         inline static constexpr auto pred_pat_true = svptrue_pat_b16;
         inline static constexpr auto pred_count = svcntp_b16;
         inline static constexpr auto set_helper = svdup_f16_m;
-
-        static inline Vector fill(float16_t val)
-        {
-            return svdup_f16(val);
-        }
+        inline static constexpr auto fill_helper = svdup_f16;
     };
 
     template <>
     struct simd_impl<float>
     {
-        typedef svfloat32_t Vector __attribute__((arm_sve_vector_bits(512)));
-        static constexpr std::size_t size =
-            max_vector_pack_size / sizeof(float);
+        typedef svfloat32_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
+        static constexpr std::size_t size = max_vector_pack_size / sizeof(float);
 
         inline static constexpr auto pred_all_true = svptrue_b32;
         inline static constexpr auto pred_next = svpnext_b32;
         inline static constexpr auto pred_pat_true = svptrue_pat_b32;
         inline static constexpr auto pred_count = svcntp_b32;
         inline static constexpr auto set_helper = svdup_f32_m;
+        inline static constexpr auto fill_helper = svdup_f32;
 
-        static inline Vector fill(float val)
-        {
-            return svdup_f32(val);
-        }
     };
 
     template <>
     struct simd_impl<double>
     {
-        typedef svfloat64_t Vector __attribute__((arm_sve_vector_bits(512)));
-        static constexpr std::size_t size =
-            max_vector_pack_size / sizeof(double);
+        typedef svfloat64_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
+        static constexpr std::size_t size = max_vector_pack_size / sizeof(double);
 
         inline static constexpr auto pred_all_true = svptrue_b64;
         inline static constexpr auto pred_next = svpnext_b64;
         inline static constexpr auto pred_pat_true = svptrue_pat_b64;
         inline static constexpr auto pred_count = svcntp_b64;
         inline static constexpr auto set_helper = svdup_f64_m;
-
-        static inline Vector fill(double val)
-        {
-            return svdup_f64(val);
-        }
+        inline static constexpr auto fill_helper = svdup_f64;
     };
 }    // namespace sve_impl
 
@@ -480,8 +432,8 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         // template <typename U>
         inline simd(T val = {})
         {
-            vec = sve_impl::simd_impl<T>::fill(val);
             all_true = sve_impl::simd_impl<T>::pred_all_true();
+            vec = sve_impl::simd_impl<T>::fill_helper(val); 
         }
 
         inline simd(Vector v)
@@ -521,17 +473,25 @@ namespace sve::experimental { inline namespace parallelism_v2 {
             if (idx < 0 || idx > (int) size())
                 return -1;
 
-            auto index = sve_impl::simd_impl<T>::pred_pat_true(SV_VL1);
+            auto index = sve_impl::simd_impl<value_type>::pred_pat_true(SV_VL1);
             for (int i = 0; i < idx; i++)
             {
-                index = sve_impl::simd_impl<T>::pred_next(all_true, index);
+                index = sve_impl::simd_impl<value_type>::pred_next(all_true, index);
             }
             return svlastb(index, vec);
         }
 
         T operator[](int idx) const
         {
-            return get(idx);
+            if (idx < 0 || idx > (int) size())
+                return -1;
+
+            auto index = sve_impl::simd_impl<value_type>::pred_pat_true(SV_VL1);
+            for (int i = 0; i < idx; i++)
+            {
+                index = sve_impl::simd_impl<value_type>::pred_next(all_true, index);
+            }
+            return svlastb(index, vec);
         }
 
         void set(int idx, T val)
@@ -813,40 +773,52 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         inline friend simd<T_, Abi_> max(
             const simd<T_, Abi_>& x, const simd<T_, Abi_>& y);
 
-        // template <typename T_, typename Abi_>
-        // inline friend T_ reduce(const simd<T_, Abi_>& x, std::plus<>)
-        // {
-        //     return svaddv(x.all_true, x.vec);
-        // }
+        template <typename T_, typename Abi_>
+        inline friend T_ reduce(const simd<T_, Abi_>& x, std::plus<>);
 
-        // template <typename T_, typename Abi_>
-        // inline friend T reduce(const simd<T_, Abi_>& x, std::bit_and<>)
-        // {
-        //     static_assert(std::is_integral_v<T_>,
-        //         "bit_and reduction only works this integeral types");
-        //     return svandv(x.all_true, x.vec);
-        // }
+        template <typename T_, typename Abi_>
+        inline friend T reduce(const simd<T_, Abi_>& x, std::bit_and<>);
 
-        // template <typename T_, typename Abi_>
-        // inline friend T_ reduce(const simd<T_, Abi_>& x, std::bit_or<>)
-        // {
-        //     static_assert(std::is_integral_v<T_>,
-        //         "bit_or reduction only works this integeral types");
-        //     return svorv(x.all_true, x.vec);
-        // }
+        template <typename T_, typename Abi_>
+        inline friend T_ reduce(const simd<T_, Abi_>& x, std::bit_or<>);
 
-        // template <typename T_, typename Abi_>
-        // inline friend T_ reduce(const simd<T_, Abi_>& x, std::bit_xor<>)
-        // {
-        //     static_assert(std::is_integral_v<T_>,
-        //         "bit_xor reduction only works this integeral types");
-        //     return sveorv(x.all_true, x.vec);
-        // }
+        template <typename T_, typename Abi_>
+        inline friend T_ reduce(const simd<T_, Abi_>& x, std::bit_xor<>);
 
         template <typename T_, typename Abi_>
         inline friend simd<T_, Abi_> sqrt(const simd<T_, Abi_>& x);
     };
 
+    template <typename T, typename Abi>
+    inline T reduce(const simd<T, Abi>& x, std::plus<>)
+    {
+        return svaddv(x.all_true, x.vec);
+    }
+
+    template <typename T, typename Abi>
+    inline T reduce(const simd<T, Abi>& x, std::bit_and<>)
+    {
+        static_assert(std::is_integral_v<T>,
+            "bit_and reduction only works this integeral types");
+        return svandv(x.all_true, x.vec);
+    }
+
+    template <typename T, typename Abi>
+    inline T reduce(const simd<T, Abi>& x, std::bit_or<>)
+    {
+        static_assert(std::is_integral_v<T>,
+            "bit_or reduction only works this integeral types");
+        return svorv(x.all_true, x.vec);
+    }
+
+    template <typename T, typename Abi>
+    inline T reduce(const simd<T, Abi>& x, std::bit_xor<>)
+    {
+        static_assert(std::is_integral_v<T>,
+            "bit_xor reduction only works this integeral types");
+        return sveorv(x.all_true, x.vec);
+    }
+    
     template <typename T, typename Abi>
     inline simd<T, Abi> min(const simd<T, Abi>& x, const simd<T, Abi>& y)
     {

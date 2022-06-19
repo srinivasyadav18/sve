@@ -19,6 +19,11 @@ option(SVE_INSTALL_LIBRARY
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+if (NOT SVE_LENGTH)
+  set(SVE_LENGTH 128)
+endif()
+message(STATUS "Using sve length : ${SVE_LENGTH}")
+
 add_library(sve INTERFACE)
 add_library(SVE::sve ALIAS sve)
 
@@ -27,7 +32,8 @@ target_include_directories(
                $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
 target_compile_features(sve INTERFACE cxx_std_20)
-target_compile_options(sve INTERFACE "-mcpu=a64fx" "-msve-vector-bits=512")
+target_compile_definitions(sve INTERFACE SVE_LEN=${SVE_LENGTH})
+target_compile_options(sve INTERFACE "-mcpu=native" "-msve-vector-bits=${SVE_LENGTH}")
 
 if(BUILD_TESTING AND SVE_BUILD_TESTING)
   add_subdirectory(tests)
