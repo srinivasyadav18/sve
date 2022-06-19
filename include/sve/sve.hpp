@@ -23,18 +23,110 @@ namespace sve_impl {
     typedef svbool_t Predicate __attribute__((arm_sve_vector_bits(SVE_LEN)));
 
     // ----------------------------------------------------------------------
+    template <int T>
+    struct simd_impl_
+    {
+    };
+
+    template<>
+    struct simd_impl_<1>
+    {
+        inline static auto all_true()
+        {
+            return svptrue_b8();
+        }
+        inline static auto first_true()
+        {
+            return svptrue_pat_b8(SV_VL1);
+        }
+        inline static auto next_true(auto curr_true)
+        {
+            return svpnext_b8(svptrue_b8(), curr_true);
+        }
+        inline static auto count(auto pred)
+        {
+            return svcntp_b8(svptrue_b8(), pred);
+        }
+    };
+
+    template<>
+    struct simd_impl_<2>
+    {
+        inline static auto all_true()
+        {
+            return svptrue_b16();
+        }
+        inline static auto first_true()
+        {
+            return svptrue_pat_b16(SV_VL1);
+        }
+        inline static auto next_true(auto curr_true)
+        {
+            return svpnext_b16(svptrue_b16(), curr_true);
+        }
+        inline static auto count(auto pred)
+        {
+            return svcntp_b16(svptrue_b16(), pred);
+        }
+    };
+
+    template<>
+    struct simd_impl_<4>
+    {
+        inline static auto all_true()
+        {
+            return svptrue_b32();
+        }
+        inline static auto first_true()
+        {
+            return svptrue_pat_b32(SV_VL1);
+        }
+        inline static auto next_true(auto curr_true)
+        {
+            return svpnext_b32(svptrue_b32(), curr_true);
+        }
+        inline static auto count(auto pred)
+        {
+            return svcntp_b32(svptrue_b32(), pred);
+        }
+    };
+
+    template<>
+    struct simd_impl_<8>
+    {
+        inline static auto all_true()
+        {
+            return svptrue_b64();
+        }
+        inline static auto first_true()
+        {
+            return svptrue_pat_b64(SV_VL1);
+        }
+        inline static auto next_true(auto curr_true)
+        {
+            return svpnext_b64(svptrue_b64(), curr_true);
+        }
+        inline static auto count(auto pred)
+        {
+            return svcntp_b64(svptrue_b64(), pred);
+        }
+    };
+
+    // ----------------------------------------------------------------------
     template <>
     struct simd_impl<int8_t>
     {
         typedef svint8_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
         static constexpr std::size_t size = max_vector_pack_size / sizeof(int8_t);
 
-        inline static constexpr auto pred_all_true = svptrue_b8;
-        inline static constexpr auto pred_next = svpnext_b8;
-        inline static constexpr auto pred_pat_true = svptrue_pat_b8;
-        inline static constexpr auto pred_count = svcntp_b8;
-        inline static constexpr auto set_helper = svdup_s8_m;
-        inline static constexpr auto fill_helper = svdup_s8;
+        inline static Vector set(Vector vec, Predicate index, int8_t val)
+        {
+            return svdup_s8_m(vec, index, val);
+        }
+        inline static Vector fill(int8_t val)
+        {
+            return svdup_s8(val);
+        }
     };
 
     template <>
@@ -43,12 +135,14 @@ namespace sve_impl {
         typedef svuint8_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
         static constexpr std::size_t size = max_vector_pack_size / sizeof(uint8_t);
 
-        inline static constexpr auto pred_all_true = svptrue_b8;
-        inline static constexpr auto pred_next = svpnext_b8;
-        inline static constexpr auto pred_pat_true = svptrue_pat_b8;
-        inline static constexpr auto pred_count = svcntp_b8;
-        inline static constexpr auto set_helper = svdup_u8_m;
-        inline static constexpr auto fill_helper = svdup_u8;
+        inline static Vector set(Vector vec, Predicate index, int8_t val)
+        {
+            return svdup_u8_m(vec, index, val);
+        }
+        inline static Vector fill(int8_t val)
+        {
+            return svdup_u8(val);
+        }
     };
 
     template <>
@@ -57,12 +151,14 @@ namespace sve_impl {
         typedef svint16_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
         static constexpr std::size_t size = max_vector_pack_size / sizeof(int16_t);
 
-        inline static constexpr auto pred_all_true = svptrue_b16;
-        inline static constexpr auto pred_next = svpnext_b16;
-        inline static constexpr auto pred_pat_true = svptrue_pat_b16;
-        inline static constexpr auto pred_count = svcntp_b16;
-        inline static constexpr auto set_helper = svdup_s16_m;
-        inline static constexpr auto fill_helper = svdup_s16;
+        inline static Vector set(Vector vec, Predicate index, int16_t val)
+        {
+            return svdup_s16_m(vec, index, val);
+        }
+        inline static Vector fill(int16_t val)
+        {
+            return svdup_s16(val);
+        }
     };
 
     template <>
@@ -71,12 +167,14 @@ namespace sve_impl {
         typedef svuint16_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
         static constexpr std::size_t size = max_vector_pack_size / sizeof(uint16_t);
 
-        inline static constexpr auto pred_all_true = svptrue_b16;
-        inline static constexpr auto pred_next = svpnext_b16;
-        inline static constexpr auto pred_pat_true = svptrue_pat_b16;
-        inline static constexpr auto pred_count = svcntp_b16;
-        inline static constexpr auto set_helper = svdup_u16_m;
-        inline static constexpr auto fill_helper = svdup_u16;
+        inline static Vector set(Vector vec, Predicate index, uint16_t val)
+        {
+            return svdup_u16_m(vec, index, val);
+        }
+        inline static Vector fill(uint16_t val)
+        {
+            return svdup_u16(val);
+        }
     };
 
     template <>
@@ -85,12 +183,14 @@ namespace sve_impl {
         typedef svint32_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
         static constexpr std::size_t size = max_vector_pack_size / sizeof(int32_t);
 
-        inline static constexpr auto pred_all_true = svptrue_b32;
-        inline static constexpr auto pred_next = svpnext_b32;
-        inline static constexpr auto pred_pat_true = svptrue_pat_b32;
-        inline static constexpr auto pred_count = svcntp_b32;
-        inline static constexpr auto set_helper = svdup_s32_m;
-        inline static constexpr auto fill_helper = svdup_s32;
+        inline static Vector set(Vector vec, Predicate index, int32_t val)
+        {
+            return svdup_s32_m(vec, index, val);
+        }
+        inline static Vector fill(int32_t val)
+        {
+            return svdup_s32(val);
+        }
     };
 
     template <>
@@ -100,12 +200,14 @@ namespace sve_impl {
         static constexpr std::size_t size =
             max_vector_pack_size / sizeof(uint32_t);
 
-        inline static constexpr auto pred_all_true = svptrue_b32;
-        inline static constexpr auto pred_next = svpnext_b32;
-        inline static constexpr auto pred_pat_true = svptrue_pat_b32;
-        inline static constexpr auto pred_count = svcntp_b32;
-        inline static constexpr auto set_helper = svdup_u32_m;
-        inline static constexpr auto fill_helper = svdup_u32;
+        inline static Vector set(Vector vec, Predicate index, uint32_t val)
+        {
+            return svdup_u32_m(vec, index, val);
+        }
+        inline static Vector fill(uint32_t val)
+        {
+            return svdup_u32(val);
+        }
     };
 
     template <>
@@ -114,12 +216,14 @@ namespace sve_impl {
         typedef svint64_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
         static constexpr std::size_t size = max_vector_pack_size / sizeof(int64_t);
 
-        inline static constexpr auto pred_all_true = svptrue_b64;
-        inline static constexpr auto pred_next = svpnext_b64;
-        inline static constexpr auto pred_pat_true = svptrue_pat_b64;
-        inline static constexpr auto pred_count = svcntp_b64;
-        inline static constexpr auto set_helper = svdup_s64_m;
-        inline static constexpr auto fill_helper = svdup_s64;
+        inline static Vector set(Vector vec, Predicate index, int64_t val)
+        {
+            return svdup_s64_m(vec, index, val);
+        }
+        inline static Vector fill(int64_t val)
+        {
+            return svdup_s64(val);
+        }
     };
 
     template <>
@@ -128,12 +232,14 @@ namespace sve_impl {
         typedef svuint64_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
         static constexpr std::size_t size = max_vector_pack_size / sizeof(uint64_t);
 
-        inline static constexpr auto pred_all_true = svptrue_b64;
-        inline static constexpr auto pred_next = svpnext_b64;
-        inline static constexpr auto pred_pat_true = svptrue_pat_b64;
-        inline static constexpr auto pred_count = svcntp_b64;
-        inline static constexpr auto set_helper = svdup_u64_m;
-        inline static constexpr auto fill_helper = svdup_u64;
+        inline static Vector set(Vector vec, Predicate index, uint64_t val)
+        {
+            return svdup_u64_m(vec, index, val);
+        }
+        inline static Vector fill(uint64_t val)
+        {
+            return svdup_u64(val);
+        }
     };
 
     // ----------------------------------------------------------------------
@@ -143,12 +249,14 @@ namespace sve_impl {
         typedef svfloat16_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
         static constexpr std::size_t size = max_vector_pack_size / sizeof(float16_t);
 
-        inline static constexpr auto pred_all_true = svptrue_b16;
-        inline static constexpr auto pred_next = svpnext_b16;
-        inline static constexpr auto pred_pat_true = svptrue_pat_b16;
-        inline static constexpr auto pred_count = svcntp_b16;
-        inline static constexpr auto set_helper = svdup_f16_m;
-        inline static constexpr auto fill_helper = svdup_f16;
+        inline static Vector set(Vector vec, Predicate index, float16_t val)
+        {
+            return svdup_f16_m(vec, index, val);
+        }
+        inline static Vector fill(float16_t val)
+        {
+            return svdup_f16(val);
+        }
     };
 
     template <>
@@ -157,13 +265,14 @@ namespace sve_impl {
         typedef svfloat32_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
         static constexpr std::size_t size = max_vector_pack_size / sizeof(float);
 
-        inline static constexpr auto pred_all_true = svptrue_b32;
-        inline static constexpr auto pred_next = svpnext_b32;
-        inline static constexpr auto pred_pat_true = svptrue_pat_b32;
-        inline static constexpr auto pred_count = svcntp_b32;
-        inline static constexpr auto set_helper = svdup_f32_m;
-        inline static constexpr auto fill_helper = svdup_f32;
-
+        inline static Vector set(Vector vec, Predicate index, float val)
+        {
+            return svdup_f32_m(vec, index, val);
+        }
+        inline static Vector fill(float val)
+        {
+            return svdup_f32(val);
+        }
     };
 
     template <>
@@ -172,12 +281,14 @@ namespace sve_impl {
         typedef svfloat64_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
         static constexpr std::size_t size = max_vector_pack_size / sizeof(double);
 
-        inline static constexpr auto pred_all_true = svptrue_b64;
-        inline static constexpr auto pred_next = svpnext_b64;
-        inline static constexpr auto pred_pat_true = svptrue_pat_b64;
-        inline static constexpr auto pred_count = svcntp_b64;
-        inline static constexpr auto set_helper = svdup_f64_m;
-        inline static constexpr auto fill_helper = svdup_f64;
+        inline static Vector set(Vector vec, Predicate index, double val)
+        {
+            return svdup_f64_m(vec, index, val);
+        }
+        inline static Vector fill(double val)
+        {
+            return svdup_f64(val);
+        }
     };
 }    // namespace sve_impl
 
@@ -322,6 +433,12 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         using Predicate = typename sve_impl::Predicate;
         Vector vec;
         Predicate all_true;
+        static inline constexpr int T_size = sizeof(T);
+
+        inline void init_all_true()
+        {
+            all_true = sve_impl::simd_impl_<T_size>::all_true();
+        }
 
         inline void add(T val)
         {
@@ -331,11 +448,6 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         inline void add(Vector val)
         {
             vec = svadd_x(all_true, vec, val);
-        }
-
-        static inline Vector add(Vector val1, Vector val2)
-        {
-            return svadd_x(sve_impl::simd_impl<T>::pred_all_true(), val1, val2);
         }
 
         inline void subtract(T val)
@@ -348,11 +460,6 @@ namespace sve::experimental { inline namespace parallelism_v2 {
             vec = svsub_x(all_true, vec, val);
         }
 
-        static inline Vector subtract(Vector val1, Vector val2)
-        {
-            return svsub_x(sve_impl::simd_impl<T>::pred_all_true(), val1, val2);
-        }
-
         inline void multiply(T val)
         {
             vec = svmul_x(all_true, vec, val);
@@ -363,42 +470,17 @@ namespace sve::experimental { inline namespace parallelism_v2 {
             vec = svmul_x(all_true, vec, val);
         }
 
-        static inline Vector multiply(Vector val1, Vector val2)
-        {
-            return svmul_x(sve_impl::simd_impl<T>::pred_all_true(), val1, val2);
-        }
+        // template <typename U>
+        // static inline Vector left_shift(Vector val1, U val2)
+        // {
+        //     return svlsl_x(sve_impl::simd_impl<T>::pred_all_true(), val1, val2);
+        // }
 
-        static inline Vector divide(Vector val1, Vector val2)
-        {
-            return svdiv_x(sve_impl::simd_impl<T>::pred_all_true(), val1, val2);
-        }
-
-        static inline Vector bitwise_and(Vector val1, Vector val2)
-        {
-            return svand_x(sve_impl::simd_impl<T>::pred_all_true(), val1, val2);
-        }
-
-        static inline Vector bitwise_or(Vector val1, Vector val2)
-        {
-            return svorr_x(sve_impl::simd_impl<T>::pred_all_true(), val1, val2);
-        }
-
-        static inline Vector bitwise_xor(Vector val1, Vector val2)
-        {
-            return sveor_x(sve_impl::simd_impl<T>::pred_all_true(), val1, val2);
-        }
-
-        template <typename U>
-        static inline Vector left_shift(Vector val1, U val2)
-        {
-            return svlsl_x(sve_impl::simd_impl<T>::pred_all_true(), val1, val2);
-        }
-
-        template <typename U>
-        static inline Vector right_shift(Vector val1, U val2)
-        {
-            return svlsr_x(sve_impl::simd_impl<T>::pred_all_true(), val1, val2);
-        }
+        // template <typename U>
+        // static inline Vector right_shift(Vector val1, U val2)
+        // {
+        //     return svlsr_x(sve_impl::simd_impl<T>::pred_all_true(), val1, val2);
+        // }
 
     public:
         using value_type = T;
@@ -425,21 +507,21 @@ namespace sve::experimental { inline namespace parallelism_v2 {
                 "pointer should be same type as value_type");
             static_assert(is_simd_flag_type_v<Flag>,
                 "use element_aligned or vector_aligned tag");
-            all_true = sve_impl::simd_impl<T>::pred_all_true();
+            init_all_true();
             vec = svld1(all_true, ptr);
         }
 
         // template <typename U>
         inline simd(T val = {})
         {
-            all_true = sve_impl::simd_impl<T>::pred_all_true();
-            vec = sve_impl::simd_impl<T>::fill_helper(val); 
+            init_all_true();
+            vec = sve_impl::simd_impl<T>::fill(val); 
         }
 
         inline simd(Vector v)
         {
             vec = v;
-            all_true = sve_impl::simd_impl<T>::pred_all_true();
+            init_all_true();
         }
 
         // ----------------------------------------------------------------------
@@ -473,10 +555,10 @@ namespace sve::experimental { inline namespace parallelism_v2 {
             if (idx < 0 || idx > (int) size())
                 return -1;
 
-            auto index = sve_impl::simd_impl<value_type>::pred_pat_true(SV_VL1);
+            auto index = sve_impl::simd_impl_<T_size>::first_true();
             for (int i = 0; i < idx; i++)
             {
-                index = sve_impl::simd_impl<value_type>::pred_next(all_true, index);
+                index = sve_impl::simd_impl_<T_size>::next_true(index);
             }
             return svlastb(index, vec);
         }
@@ -486,10 +568,10 @@ namespace sve::experimental { inline namespace parallelism_v2 {
             if (idx < 0 || idx > (int) size())
                 return -1;
 
-            auto index = sve_impl::simd_impl<value_type>::pred_pat_true(SV_VL1);
+            auto index = sve_impl::simd_impl_<T_size>::first_true();
             for (int i = 0; i < idx; i++)
             {
-                index = sve_impl::simd_impl<value_type>::pred_next(all_true, index);
+                index = sve_impl::simd_impl_<T_size>::next_true(index);
             }
             return svlastb(index, vec);
         }
@@ -499,12 +581,12 @@ namespace sve::experimental { inline namespace parallelism_v2 {
             if (idx < 0 || idx > (int) size())
                 return;
 
-            auto index = sve_impl::simd_impl<T>::pred_pat_true(SV_VL1);
+            auto index = sve_impl::simd_impl_<T_size>::first_true();
             for (int i = 0; i < idx; i++)
             {
-                index = sve_impl::simd_impl<T>::pred_next(all_true, index);
+                index = sve_impl::simd_impl_<T_size>::next_true(index);
             }
-            vec = sve_impl::simd_impl<T>::set_helper(vec, index, val);
+            vec = sve_impl::simd_impl<value_type>::set(vec, index, val);
         }
 
         // ----------------------------------------------------------------------
@@ -515,14 +597,12 @@ namespace sve::experimental { inline namespace parallelism_v2 {
             using type_ = std::decay_t<decltype(x)>;
             using value_type_ = typename type_::value_type;
 
-            auto index =
-                sve_impl::simd_impl<value_type_>::pred_pat_true(SV_VL1);
+            auto index = sve_impl::simd_impl_<sizeof(value_type_)>::first_true();
             os << "( ";
             for (int i = 0; i < (int) x.size(); i++)
             {
                 os << svlastb(index, x.vec) << ' ';
-                index = sve_impl::simd_impl<value_type_>::pred_next(
-                    x.all_true, index);
+                index = sve_impl::simd_impl_<sizeof(value_type_)>::next_true(index);
             }
             os << ")";
             return os;
@@ -595,43 +675,43 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         // ----------------------------------------------------------------------
         inline friend simd operator+(const simd& x, const simd& y)
         {
-            return add(x.vec, y.vec);
+            return svadd_x(x.all_true, x.vec, y.vec);
         }
 
         inline friend simd operator-(const simd& x, const simd& y)
         {
-            return subtract(x.vec, y.vec);
+            return svsub_x(x.all_true, x.vec, y.vec);
         }
 
         inline friend simd operator*(const simd& x, const simd& y)
         {
-            return multiply(x.vec, y.vec);
+            return svmul_x(x.all_true, x.vec, y.vec);
         }
 
         inline friend simd operator/(const simd& x, const simd& y)
         {
-            return divide(x.vec, y.vec);
+            return svdiv_x(x.all_true, x.vec, y.vec);
         }
 
         inline friend simd operator&(const simd& x, const simd& y)
         {
             static_assert(std::is_integral_v<T>,
                 "operator& only works for integeral types");
-            return bitwise_and(x.vec, y.vec);
+            return svand_x(x.all_true, x.vec, y.vec);
         }
 
         inline friend simd operator|(const simd& x, const simd& y)
         {
             static_assert(std::is_integral_v<T>,
                 "operator| only works for integeral types");
-            return bitwise_or(x.vec, y.vec);
+            return svorr_x(x.all_true, x.vec, y.vec);
         }
 
         inline friend simd operator^(const simd& x, const simd& y)
         {
             static_assert(std::is_integral_v<T>,
                 "operator^ only works for integeral types");
-            return bitwise_xor(x.vec, y.vec);
+            return sveor_x(x.all_true, x.vec, y.vec);
         }
 
         // friend simd operator<<(const simd& x, typename std::make_unsigned<T>::type
@@ -651,25 +731,25 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         // ----------------------------------------------------------------------
         inline friend simd& operator+=(simd& x, const simd& y)
         {
-            x.vec = add(x.vec, y.vec);
+            x.vec = svadd_x(x.all_true, x.vec, y.vec);
             return x;
         }
 
         inline friend simd& operator-=(simd& x, const simd& y)
         {
-            x.vec = subtract(x.vec, y.vec);
+            x.vec = svsub_x(x.all_true, x.vec, y.vec);
             return x;
         }
 
         inline friend simd& operator*=(simd& x, const simd& y)
         {
-            x.vec = multiply(x.vec, y.vec);
+            x.vec = svmul_x(x.all_true, x.vec, y.vec);
             return x;
         }
 
         inline friend simd& operator/=(simd& x, const simd& y)
         {
-            x.vec = divide(x.vec, y.vec);
+            x.vec = svdiv_x(x.all_true, x.vec, y.vec);
             return x;
         }
 
@@ -677,7 +757,7 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         {
             static_assert(std::is_integral_v<T>,
                 "operator&= only works for integeral types");
-            x.vec = bitwise_and(x.vec, y.vec);
+            x.vec = svand_x(x.all_true, x.vec, y.vec);
             return x;
         }
 
@@ -685,7 +765,7 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         {
             static_assert(std::is_integral_v<T>,
                 "operator|= only works for integeral types");
-            x.vec = bitwise_or(x.vec, y.vec);
+            x.vec = svorr_x(x.all_true, x.vec, y.vec);
             return x;
         }
 
@@ -693,7 +773,7 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         {
             static_assert(std::is_integral_v<T>,
                 "operator^= only works for integeral types");
-            x.vec = bitwise_xor(x.vec, y.vec);
+            x.vec = sveor_x(x.all_true, x.vec, y.vec);
             return x;
         }
 
@@ -855,6 +935,12 @@ namespace sve::experimental { inline namespace parallelism_v2 {
     private:
         using Predicate = typename sve_impl::Predicate;
         Predicate pred, all_true;
+        static inline constexpr int T_size = sizeof(T);
+
+        inline void init_all_true()
+        {
+            all_true = sve_impl::simd_impl_<T_size>::all_true();
+        }
 
     public:
         using value_type = bool;
@@ -876,16 +962,18 @@ namespace sve::experimental { inline namespace parallelism_v2 {
 
         inline simd_mask(bool val = false)
         {
-            all_true = sve_impl::simd_impl<T>::pred_all_true();
+            init_all_true();
             if (val)
-                pred = sve_impl::simd_impl<T>::pred_all_true();
+            {
+                pred = sve_impl::simd_impl_<T_size>::all_true();
+            }
             else
                 pred = svpfalse();
         }
 
         inline simd_mask(Predicate p)
         {
-            all_true = sve_impl::simd_impl<T>::pred_all_true();
+            init_all_true();
             pred = p;
         }
 
@@ -897,13 +985,13 @@ namespace sve::experimental { inline namespace parallelism_v2 {
             if (idx < 0 || idx > (int) size())
                 return -1;
 
-            auto index = sve_impl::simd_impl<T>::pred_pat_true(SV_VL1);
+            auto index = sve_impl::simd_impl_<T_size>::first_true();
             for (int i = 0; i < idx; i++)
             {
-                index = sve_impl::simd_impl<T>::pred_next(all_true, index);
+                index = sve_impl::simd_impl_<T_size>::next_true(index);
             }
             index = svand_z(all_true, pred, index);
-            return sve_impl::simd_impl<T>::pred_count(all_true, index);
+            return sve_impl::simd_impl_<T_size>::count(index);
         }
 
         T operator[](int idx) const
@@ -916,10 +1004,10 @@ namespace sve::experimental { inline namespace parallelism_v2 {
             if (idx < 0 || idx > (int) size())
                 return;
 
-            auto index = sve_impl::simd_impl<T>::pred_pat_true(SV_VL1);
+            auto index = sve_impl::simd_impl_<T_size>::first_true();
             for (int i = 0; i < idx; i++)
             {
-                index = sve_impl::simd_impl<T>::pred_next(all_true, index);
+                index = sve_impl::simd_impl_<T_size>::next_true(index);
             }
             if (val)
                 pred = svorr_z(all_true, pred, index);
@@ -937,15 +1025,14 @@ namespace sve::experimental { inline namespace parallelism_v2 {
             using value_type_ = typename simd_type::value_type;
 
             auto index =
-                sve_impl::simd_impl<value_type_>::pred_pat_true(SV_VL1);
+                sve_impl::simd_impl_<sizeof(value_type_)>::first_true();
             os << "( ";
-            for (int i = 0; i < sve_impl::simd_impl<value_type_>::size; i++)
+            for (int i = 0; i < (int) x.size(); i++)
             {
-                os << sve_impl::simd_impl<value_type_>::pred_count(
-                          x.all_true, svand_z(x.all_true, x.pred, index))
+                os << sve_impl::simd_impl_<sizeof(value_type_)>::count(
+                    svand_z(x.all_true, x.pred, index))
                    << ' ';
-                index = sve_impl::simd_impl<value_type_>::pred_next(
-                    x.all_true, index);
+                index = sve_impl::simd_impl_<sizeof(value_type_)>::next_true(index);
             }
             os << ")";
             return os;
@@ -1036,7 +1123,7 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         // ----------------------------------------------------------------------
         inline int popcount() const
         {
-            return sve_impl::simd_impl<T>::pred_count(all_true, pred);
+            return sve_impl::simd_impl_<T_size>::count(pred);
         }
 
         inline bool all_of() const
@@ -1062,13 +1149,13 @@ namespace sve::experimental { inline namespace parallelism_v2 {
 
         inline int find_first_set() const
         {
-            auto index = sve_impl::simd_impl<T>::pred_pat_true(SV_VL1);
+            auto index = sve_impl::simd_impl_<T_size>::first_true();
             for (int i = 0; i < (int) size(); i++)
             {
-                if (sve_impl::simd_impl<T>::pred_count(
-                        all_true, svand_z(all_true, pred, index)))
+                if (sve_impl::simd_impl_<T_size>::count(
+                        svand_z(all_true, pred, index)))
                     return i;
-                index = sve_impl::simd_impl<T>::pred_next(all_true, index);
+                index = sve_impl::simd_impl_<T_size>::next_true(index);
             }
             return -1;
         }
@@ -1076,13 +1163,13 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         inline int find_last_set() const
         {
             int ans = -1;
-            auto index = sve_impl::simd_impl<T>::pred_pat_true(SV_VL1);
+            auto index = sve_impl::simd_impl_<T_size>::first_true();
             for (int i = 0; i < (int) size(); i++)
             {
-                if (sve_impl::simd_impl<T>::pred_count(
-                        all_true, svand_z(all_true, pred, index)))
+                if (sve_impl::simd_impl_<T_size>::count(
+                        svand_z(all_true, pred, index)))
                     ans = i;
-                index = sve_impl::simd_impl<T>::pred_next(all_true, index);
+                index = sve_impl::simd_impl_<T_size>::next_true(index);
             }
             return ans;
         }
