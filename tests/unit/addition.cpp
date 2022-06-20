@@ -53,6 +53,11 @@ void test()
     std::cout << "x : " << x - 1 << '\n';
     std::cout << "x : " << x-- << '\n';
     std::cout << "x : " << --x << '\n';
+
+    std::cout << "x : " << -x << '\n';
+    std::cout << "x : " << -(x - 1) << '\n';
+    std::cout << "x : " << -(x--)<< '\n';
+    std::cout << "x : " << -(--x) << '\n';
 }
 
 int main()

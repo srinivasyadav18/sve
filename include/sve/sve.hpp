@@ -440,48 +440,6 @@ namespace sve::experimental { inline namespace parallelism_v2 {
             all_true = sve_impl::simd_impl_<T_size>::all_true();
         }
 
-        inline void add(T val)
-        {
-            vec = svadd_x(all_true, vec, val);
-        }
-
-        inline void add(Vector val)
-        {
-            vec = svadd_x(all_true, vec, val);
-        }
-
-        inline void subtract(T val)
-        {
-            vec = svsub_x(all_true, vec, val);
-        }
-
-        inline void subtract(Vector val)
-        {
-            vec = svsub_x(all_true, vec, val);
-        }
-
-        inline void multiply(T val)
-        {
-            vec = svmul_x(all_true, vec, val);
-        }
-
-        inline void multiply(Vector val)
-        {
-            vec = svmul_x(all_true, vec, val);
-        }
-
-        // template <typename U>
-        // static inline Vector left_shift(Vector val1, U val2)
-        // {
-        //     return svlsl_x(sve_impl::simd_impl<T>::pred_all_true(), val1, val2);
-        // }
-
-        // template <typename U>
-        // static inline Vector right_shift(Vector val1, U val2)
-        // {
-        //     return svlsr_x(sve_impl::simd_impl<T>::pred_all_true(), val1, val2);
-        // }
-
     public:
         using value_type = T;
         using abi_type = Abi;
@@ -634,27 +592,27 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         // ----------------------------------------------------------------------
         inline simd& operator++()
         {
-            add(static_cast<T>(1));
+            vec = svadd_x(all_true, vec, static_cast<T>(1));
             return *this;
         }
 
         inline auto operator++(int)
         {
             auto vec_copy = *this;
-            add(static_cast<T>(1));
+            vec = svadd_x(all_true, vec, static_cast<T>(1));
             return vec_copy;
         }
 
         inline simd& operator--()
         {
-            subtract(static_cast<T>(1));
+            vec = svsub_x(all_true, vec, static_cast<T>(1));
             return *this;
         }
 
         inline auto operator--(int)
         {
             auto vec_copy = *this;
-            subtract(static_cast<T>(1));
+            vec = svsub_x(all_true, vec, static_cast<T>(1));
             return vec_copy;
         }
 
@@ -666,7 +624,7 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         inline simd operator-() const
         {
             auto vec_copy = *this;
-            vec_copy.multiply(-1);
+            vec_copy.vec = svmul_x(vec_copy.all_true, vec_copy.vec, static_cast<T>(-1));
             return vec_copy;
         }
 
