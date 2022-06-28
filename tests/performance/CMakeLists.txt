@@ -6,10 +6,10 @@ set (perf_tests
 
 foreach(perf_test ${perf_tests})
     message("adding perf test: " ${perf_test})
+    set(target ${perf_test}_perf_test)
+    add_executable(${target} ${perf_test}.cpp)
 
-    add_executable(${perf_test} ${perf_test}.cpp)
+    target_link_libraries(${target} sve)
 
-    target_link_libraries(${perf_test} sve)
-
-    add_test(NAME ${perf_test} COMMAND ${perf_test})
+    add_test(NAME ${target} COMMAND ${target})
 endforeach()
