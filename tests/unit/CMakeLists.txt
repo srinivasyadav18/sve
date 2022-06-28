@@ -1,18 +1,25 @@
 enable_testing()
 
 set (unit_tests 
+    iota
     dummy
     load_store
     copy_from_to
-    addition    
+    addition
+    fft
+    reduce
+    scan
+    index_series
+    random
+    permute
 )
 
 foreach(unit_test ${unit_tests})
     message("adding unit test: " ${unit_test})
+    set(target ${unit_test}_unit_test)
+    add_executable(${target} ${unit_test}.cpp)
 
-    add_executable(${unit_test} ${unit_test}.cpp)
+    target_link_libraries(${target} sve)
 
-    target_link_libraries(${unit_test} sve)
-
-    add_test(NAME ${unit_test} COMMAND ${unit_test})
+    add_test(NAME ${target} COMMAND ${target})
 endforeach()
