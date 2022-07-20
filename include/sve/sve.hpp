@@ -867,6 +867,9 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         inline friend simd<T_, Abi_> sqrt(const simd<T_, Abi_>& x);
 
         template <typename T_, typename Abi_>
+        inline friend simd<T_, Abi_> abs(const simd<T_, Abi_>& x);
+
+        template <typename T_, typename Abi_>
         inline friend simd<T_, Abi_> fma(const simd<T_, Abi_>& a,
             const simd<T_, Abi_>& b, const simd<T_, Abi_>& z);
 
@@ -948,6 +951,12 @@ namespace sve::experimental { inline namespace parallelism_v2 {
             std::is_floating_point_v<T_> || std::is_same_v<T_, float16_t>,
             "sqrt only works this floating point types");
         return svsqrt_x(x.all_true, x.vec);
+    }
+
+    template <typename T_, typename Abi_>
+    inline simd<T_, Abi_> abs(const simd<T_, Abi_>& x)
+    {
+        return svabs_x(x.all_true, x.vec);
     }
 
     template <typename T_, typename Abi_>
