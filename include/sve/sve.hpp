@@ -863,6 +863,9 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         inline friend simd<T_, Abi_> max(
             const simd<T_, Abi_>& x, const simd<T_, Abi_>& y);
 
+        template <typename t_, typename abi_>
+        inline friend simd<t_, abi_> copysign(const simd<t_, abi_>& valSrc, const simd<t_, abi_>& signSrc);
+
         template <typename T_, typename Abi_>
         inline friend simd<T_, Abi_> sqrt(const simd<T_, Abi_>& x);
 
@@ -939,6 +942,22 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         const simd<T, Abi>& x, const simd<T, Abi>& y)
     {
         return {min(x, y), max(x, y)};
+    }
+
+    template <typename T_, typename Abi_>
+    inline simd<T_, Abi_> copysign(const simd<T_, Abi_>& valSrc, const simd<T_, Abi_>& signSrc) {
+        static_assert(
+            std::is_same_v<T_, float64_t>,
+            "vectorized copysign is only implemented for f64 types thus far.");
+        // obtain signbits by using a static -0.0 mask to find them in the signSrc via a bitwise AND
+        const auto signmask = sve_impl::simd_impl<T_>::fill(-0.0);
+        const auto signbits = svand_x(signSrc.all_true, svreinterpret_s64(signSrc.vec), svreinterpret_s64(signmask));
+        // obtains the valuebits by using the inverted signmask via a bitwise ANDNOT
+        const auto absbits = svbic_x(signSrc.all_true, svreinterpret_s64(valSrc.vec), svreinterpret_s64(signmask));
+        // Results is just the two bitsequeences combined via a bitwise OR
+        const auto result = svorr_x(signSrc.all_true, signbits, absbits);
+        // Return bit sequence as a f64 type
+        return svreinterpret_f64(result);
     }
 
     template <typename T_, typename Abi_>
