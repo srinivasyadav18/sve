@@ -1,7 +1,7 @@
 template <typename T>
 void test(std::size_t seed = 42)
 {
-    int len = 64 / sizeof(T);
+    int len = (SVE_LEN / 8) / sizeof(T);
     std::vector<T> input(len), 
                     seq_output(len),
                     sve_simd_output(len),

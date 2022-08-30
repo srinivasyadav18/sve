@@ -7,6 +7,11 @@
 #include <functional>
 #include <iostream>
 #include <type_traits>
+#include <unistd.h>
+
+#if !defined(SVE_LEN)
+#define SVE_LEN 128
+#endif
 
 namespace sve_impl {
     template <typename T>
@@ -14,218 +19,341 @@ namespace sve_impl {
     {
     };
 
-    static constexpr int max_vector_pack_size = 64;
-    typedef svbool_t Predicate __attribute__((arm_sve_vector_bits(512)));
+    static constexpr int max_vector_pack_size = SVE_LEN / 8;
+    typedef svbool_t Predicate __attribute__((arm_sve_vector_bits(SVE_LEN)));
+
+    // ----------------------------------------------------------------------
+    template <int T>
+    struct simd_impl_
+    {
+    };
+
+    template <>
+    struct simd_impl_<1>
+    {
+        inline static auto all_true()
+        {
+            return svptrue_b8();
+        }
+        inline static auto first_true()
+        {
+            return svptrue_pat_b8(SV_VL1);
+        }
+        inline static auto next_true(auto curr_true)
+        {
+            return svpnext_b8(svptrue_b8(), curr_true);
+        }
+        inline static auto count(auto pred)
+        {
+            return svcntp_b8(svptrue_b8(), pred);
+        }
+    };
+
+    template <>
+    struct simd_impl_<2>
+    {
+        inline static auto all_true()
+        {
+            return svptrue_b16();
+        }
+        inline static auto first_true()
+        {
+            return svptrue_pat_b16(SV_VL1);
+        }
+        inline static auto next_true(auto curr_true)
+        {
+            return svpnext_b16(svptrue_b16(), curr_true);
+        }
+        inline static auto count(auto pred)
+        {
+            return svcntp_b16(svptrue_b16(), pred);
+        }
+    };
+
+    template <>
+    struct simd_impl_<4>
+    {
+        inline static auto all_true()
+        {
+            return svptrue_b32();
+        }
+        inline static auto first_true()
+        {
+            return svptrue_pat_b32(SV_VL1);
+        }
+        inline static auto next_true(auto curr_true)
+        {
+            return svpnext_b32(svptrue_b32(), curr_true);
+        }
+        inline static auto count(auto pred)
+        {
+            return svcntp_b32(svptrue_b32(), pred);
+        }
+    };
+
+    template <>
+    struct simd_impl_<8>
+    {
+        inline static auto all_true()
+        {
+            return svptrue_b64();
+        }
+        inline static auto first_true()
+        {
+            return svptrue_pat_b64(SV_VL1);
+        }
+        inline static auto next_true(auto curr_true)
+        {
+            return svpnext_b64(svptrue_b64(), curr_true);
+        }
+        inline static auto count(auto pred)
+        {
+            return svcntp_b64(svptrue_b64(), pred);
+        }
+    };
 
     // ----------------------------------------------------------------------
     template <>
     struct simd_impl<int8_t>
     {
-        typedef svint8_t Vector __attribute__((arm_sve_vector_bits(512)));
-        static constexpr std::size_t size =
-            max_vector_pack_size / sizeof(int8_t);
+        using T = int8_t;
+        typedef svint8_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
+        static constexpr std::size_t size = max_vector_pack_size / sizeof(T);
 
-        inline static constexpr auto pred_all_true = svptrue_b8;
-        inline static constexpr auto pred_next = svpnext_b8;
-        inline static constexpr auto pred_pat_true = svptrue_pat_b8;
-        inline static constexpr auto pred_count = svcntp_b8;
-        inline static constexpr auto set_helper = svdup_s8_m;
-
-        static inline Vector fill(int8_t val)
+        inline static Vector set(Vector vec, Predicate index, T val)
+        {
+            return svdup_s8_m(vec, index, val);
+        }
+        inline static Vector fill(T val)
         {
             return svdup_s8(val);
         }
+        inline static Vector index_series(T base, T step)
+        {
+            return svindex_s8(base, step);
+        }
+        inline static const Vector index0123 = svindex_s8(T(0), T(1));
     };
 
     template <>
     struct simd_impl<uint8_t>
     {
-        typedef svuint8_t Vector __attribute__((arm_sve_vector_bits(512)));
-        static constexpr std::size_t size =
-            max_vector_pack_size / sizeof(uint8_t);
+        using T = uint8_t;
+        typedef svuint8_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
+        static constexpr std::size_t size = max_vector_pack_size / sizeof(T);
 
-        inline static constexpr auto pred_all_true = svptrue_b8;
-        inline static constexpr auto pred_next = svpnext_b8;
-        inline static constexpr auto pred_pat_true = svptrue_pat_b8;
-        inline static constexpr auto pred_count = svcntp_b8;
-        inline static constexpr auto set_helper = svdup_u8_m;
-
-        static inline Vector fill(uint8_t val)
+        inline static Vector set(Vector vec, Predicate index, T val)
+        {
+            return svdup_u8_m(vec, index, val);
+        }
+        inline static Vector fill(T val)
         {
             return svdup_u8(val);
         }
+        inline static Vector index_series(T base, T step)
+        {
+            return svindex_u8(base, step);
+        }
+        inline static const Vector index0123 = svindex_u8(T(0), T(1));
     };
 
     template <>
     struct simd_impl<int16_t>
     {
-        typedef svint16_t Vector __attribute__((arm_sve_vector_bits(512)));
-        static constexpr std::size_t size =
-            max_vector_pack_size / sizeof(int16_t);
+        using T = int16_t;
+        typedef svint16_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
+        static constexpr std::size_t size = max_vector_pack_size / sizeof(T);
 
-        inline static constexpr auto pred_all_true = svptrue_b16;
-        inline static constexpr auto pred_next = svpnext_b16;
-        inline static constexpr auto pred_pat_true = svptrue_pat_b16;
-        inline static constexpr auto pred_count = svcntp_b16;
-        inline static constexpr auto set_helper = svdup_s16_m;
-
-        static inline Vector fill(int16_t val)
+        inline static Vector set(Vector vec, Predicate index, T val)
+        {
+            return svdup_s16_m(vec, index, val);
+        }
+        inline static Vector fill(T val)
         {
             return svdup_s16(val);
         }
+        inline static Vector index_series(T base, T step)
+        {
+            return svindex_s16(base, step);
+        }
+        inline static const Vector index0123 = svindex_s16(T(0), T(1));
     };
 
     template <>
     struct simd_impl<uint16_t>
     {
-        typedef svuint16_t Vector __attribute__((arm_sve_vector_bits(512)));
-        static constexpr std::size_t size =
-            max_vector_pack_size / sizeof(uint16_t);
+        using T = uint16_t;
+        typedef svuint16_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
+        static constexpr std::size_t size = max_vector_pack_size / sizeof(T);
 
-        inline static constexpr auto pred_all_true = svptrue_b16;
-        inline static constexpr auto pred_next = svpnext_b16;
-        inline static constexpr auto pred_pat_true = svptrue_pat_b16;
-        inline static constexpr auto pred_count = svcntp_b16;
-        inline static constexpr auto set_helper = svdup_u16_m;
-
-        static inline Vector fill(uint16_t val)
+        inline static Vector set(Vector vec, Predicate index, T val)
+        {
+            return svdup_u16_m(vec, index, val);
+        }
+        inline static Vector fill(T val)
         {
             return svdup_u16(val);
         }
+        inline static Vector index_series(T base, T step)
+        {
+            return svindex_u16(base, step);
+        }
+        inline static const Vector index0123 = svindex_u16(T(0), T(1));
     };
 
     template <>
     struct simd_impl<int32_t>
     {
-        typedef svint32_t Vector __attribute__((arm_sve_vector_bits(512)));
-        static constexpr std::size_t size =
-            max_vector_pack_size / sizeof(int32_t);
+        using T = int32_t;
+        typedef svint32_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
+        static constexpr std::size_t size = max_vector_pack_size / sizeof(T);
 
-        inline static constexpr auto pred_all_true = svptrue_b32;
-        inline static constexpr auto pred_next = svpnext_b32;
-        inline static constexpr auto pred_pat_true = svptrue_pat_b32;
-        inline static constexpr auto pred_count = svcntp_b32;
-        inline static constexpr auto set_helper = svdup_s32_m;
-
-        static inline Vector fill(int32_t val)
+        inline static Vector set(Vector vec, Predicate index, T val)
+        {
+            return svdup_s32_m(vec, index, val);
+        }
+        inline static Vector fill(T val)
         {
             return svdup_s32(val);
         }
+        inline static Vector index_series(T base, T step)
+        {
+            return svindex_s32(base, step);
+        }
+        inline static const Vector index0123 = svindex_s32(T(0), T(1));
     };
 
     template <>
     struct simd_impl<uint32_t>
     {
-        typedef svuint32_t Vector __attribute__((arm_sve_vector_bits(512)));
-        static constexpr std::size_t size =
-            max_vector_pack_size / sizeof(uint32_t);
+        using T = uint32_t;
+        typedef svuint32_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
+        static constexpr std::size_t size = max_vector_pack_size / sizeof(T);
 
-        inline static constexpr auto pred_all_true = svptrue_b32;
-        inline static constexpr auto pred_next = svpnext_b32;
-        inline static constexpr auto pred_pat_true = svptrue_pat_b32;
-        inline static constexpr auto pred_count = svcntp_b32;
-        inline static constexpr auto set_helper = svdup_u32_m;
-
-        static inline Vector fill(uint32_t val)
+        inline static Vector set(Vector vec, Predicate index, T val)
+        {
+            return svdup_u32_m(vec, index, val);
+        }
+        inline static Vector fill(T val)
         {
             return svdup_u32(val);
         }
+        inline static Vector index_series(T base, T step)
+        {
+            return svindex_u32(base, step);
+        }
+        inline static const Vector index0123 = svindex_u32(T(0), T(1));
     };
 
     template <>
     struct simd_impl<int64_t>
     {
-        typedef svint64_t Vector __attribute__((arm_sve_vector_bits(512)));
-        static constexpr std::size_t size =
-            max_vector_pack_size / sizeof(int64_t);
+        using T = int64_t;
+        typedef svint64_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
+        static constexpr std::size_t size = max_vector_pack_size / sizeof(T);
 
-        inline static constexpr auto pred_all_true = svptrue_b64;
-        inline static constexpr auto pred_next = svpnext_b64;
-        inline static constexpr auto pred_pat_true = svptrue_pat_b64;
-        inline static constexpr auto pred_count = svcntp_b64;
-        inline static constexpr auto set_helper = svdup_s64_m;
-
-        static inline Vector fill(int64_t val)
+        inline static Vector set(Vector vec, Predicate index, T val)
+        {
+            return svdup_s64_m(vec, index, val);
+        }
+        inline static Vector fill(T val)
         {
             return svdup_s64(val);
         }
+        inline static Vector index_series(T base, T step)
+        {
+            return svindex_s64(base, step);
+        }
+        inline static const Vector index0123 = svindex_s64(T(0), T(1));
     };
 
     template <>
     struct simd_impl<uint64_t>
     {
-        typedef svuint64_t Vector __attribute__((arm_sve_vector_bits(512)));
-        static constexpr std::size_t size =
-            max_vector_pack_size / sizeof(uint64_t);
+        using T = uint64_t;
+        typedef svuint64_t Vector __attribute__((arm_sve_vector_bits(SVE_LEN)));
+        static constexpr std::size_t size = max_vector_pack_size / sizeof(T);
 
-        inline static constexpr auto pred_all_true = svptrue_b64;
-        inline static constexpr auto pred_next = svpnext_b64;
-        inline static constexpr auto pred_pat_true = svptrue_pat_b64;
-        inline static constexpr auto pred_count = svcntp_b64;
-        inline static constexpr auto set_helper = svdup_u64_m;
-
-        static inline Vector fill(uint64_t val)
+        inline static Vector set(Vector vec, Predicate index, T val)
+        {
+            return svdup_u64_m(vec, index, val);
+        }
+        inline static Vector fill(T val)
         {
             return svdup_u64(val);
         }
+        inline static Vector index_series(T base, T step)
+        {
+            return svindex_u64(base, step);
+        }
+        inline static const Vector index0123 = svindex_u64(T(0), T(1));
     };
 
     // ----------------------------------------------------------------------
     template <>
     struct simd_impl<float16_t>
     {
-        typedef svfloat16_t Vector __attribute__((arm_sve_vector_bits(512)));
+        typedef svfloat16_t Vector
+            __attribute__((arm_sve_vector_bits(SVE_LEN)));
         static constexpr std::size_t size =
             max_vector_pack_size / sizeof(float16_t);
 
-        inline static constexpr auto pred_all_true = svptrue_b16;
-        inline static constexpr auto pred_next = svpnext_b16;
-        inline static constexpr auto pred_pat_true = svptrue_pat_b16;
-        inline static constexpr auto pred_count = svcntp_b16;
-        inline static constexpr auto set_helper = svdup_f16_m;
-
-        static inline Vector fill(float16_t val)
+        inline static Vector set(Vector vec, Predicate index, float16_t val)
+        {
+            return svdup_f16_m(vec, index, val);
+        }
+        inline static Vector fill(float16_t val)
         {
             return svdup_f16(val);
         }
+        inline static const float16_t iota_array[32] = {0, 1, 2, 3, 4, 5, 6, 7,
+            8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31};
+        inline static const Vector index0123 = svld1(
+            sve_impl::simd_impl_<sizeof(float16_t)>::all_true(), iota_array);
     };
 
     template <>
     struct simd_impl<float>
     {
-        typedef svfloat32_t Vector __attribute__((arm_sve_vector_bits(512)));
+        typedef svfloat32_t Vector
+            __attribute__((arm_sve_vector_bits(SVE_LEN)));
         static constexpr std::size_t size =
             max_vector_pack_size / sizeof(float);
 
-        inline static constexpr auto pred_all_true = svptrue_b32;
-        inline static constexpr auto pred_next = svpnext_b32;
-        inline static constexpr auto pred_pat_true = svptrue_pat_b32;
-        inline static constexpr auto pred_count = svcntp_b32;
-        inline static constexpr auto set_helper = svdup_f32_m;
-
-        static inline Vector fill(float val)
+        inline static Vector set(Vector vec, Predicate index, float val)
+        {
+            return svdup_f32_m(vec, index, val);
+        }
+        inline static Vector fill(float val)
         {
             return svdup_f32(val);
         }
+        inline static const float iota_array[16] = {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+        inline static const Vector index0123 =
+            svld1(sve_impl::simd_impl_<sizeof(float)>::all_true(), iota_array);
     };
 
     template <>
     struct simd_impl<double>
     {
-        typedef svfloat64_t Vector __attribute__((arm_sve_vector_bits(512)));
+        typedef svfloat64_t Vector
+            __attribute__((arm_sve_vector_bits(SVE_LEN)));
         static constexpr std::size_t size =
             max_vector_pack_size / sizeof(double);
 
-        inline static constexpr auto pred_all_true = svptrue_b64;
-        inline static constexpr auto pred_next = svpnext_b64;
-        inline static constexpr auto pred_pat_true = svptrue_pat_b64;
-        inline static constexpr auto pred_count = svcntp_b64;
-        inline static constexpr auto set_helper = svdup_f64_m;
-
-        static inline Vector fill(double val)
+        inline static Vector set(Vector vec, Predicate index, double val)
+        {
+            return svdup_f64_m(vec, index, val);
+        }
+        inline static Vector fill(double val)
         {
             return svdup_f64(val);
         }
+        inline static const double iota_array[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+        inline static const Vector index0123 =
+            svld1(sve_impl::simd_impl_<sizeof(double)>::all_true(), iota_array);
     };
 }    // namespace sve_impl
 
@@ -369,89 +497,17 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         using Vector = typename sve_impl::simd_impl<T>::Vector;
         using Predicate = typename sve_impl::Predicate;
         Vector vec;
-        Predicate all_true;
-
-        inline void add(T val)
-        {
-            vec = svadd_x(all_true, vec, val);
-        }
-
-        inline void add(Vector val)
-        {
-            vec = svadd_x(all_true, vec, val);
-        }
-
-        static inline Vector add(Vector val1, Vector val2)
-        {
-            return svadd_x(sve_impl::simd_impl<T>::pred_all_true(), val1, val2);
-        }
-
-        inline void subtract(T val)
-        {
-            vec = svsub_x(all_true, vec, val);
-        }
-
-        inline void subtract(Vector val)
-        {
-            vec = svsub_x(all_true, vec, val);
-        }
-
-        static inline Vector subtract(Vector val1, Vector val2)
-        {
-            return svsub_x(sve_impl::simd_impl<T>::pred_all_true(), val1, val2);
-        }
-
-        inline void multiply(T val)
-        {
-            vec = svmul_x(all_true, vec, val);
-        }
-
-        inline void multiply(Vector val)
-        {
-            vec = svmul_x(all_true, vec, val);
-        }
-
-        static inline Vector multiply(Vector val1, Vector val2)
-        {
-            return svmul_x(sve_impl::simd_impl<T>::pred_all_true(), val1, val2);
-        }
-
-        static inline Vector divide(Vector val1, Vector val2)
-        {
-            return svdiv_x(sve_impl::simd_impl<T>::pred_all_true(), val1, val2);
-        }
-
-        static inline Vector bitwise_and(Vector val1, Vector val2)
-        {
-            return svand_x(sve_impl::simd_impl<T>::pred_all_true(), val1, val2);
-        }
-
-        static inline Vector bitwise_or(Vector val1, Vector val2)
-        {
-            return svorr_x(sve_impl::simd_impl<T>::pred_all_true(), val1, val2);
-        }
-
-        static inline Vector bitwise_xor(Vector val1, Vector val2)
-        {
-            return sveor_x(sve_impl::simd_impl<T>::pred_all_true(), val1, val2);
-        }
-
-        template <typename U>
-        static inline Vector left_shift(Vector val1, U val2)
-        {
-            return svlsl_x(sve_impl::simd_impl<T>::pred_all_true(), val1, val2);
-        }
-
-        template <typename U>
-        static inline Vector right_shift(Vector val1, U val2)
-        {
-            return svlsr_x(sve_impl::simd_impl<T>::pred_all_true(), val1, val2);
-        }
+        static inline constexpr int T_size = sizeof(T);
+        static inline const Predicate all_true =
+            sve_impl::simd_impl_<T_size>::all_true();
 
     public:
         using value_type = T;
         using abi_type = Abi;
         using mask_type = simd_mask<T, Abi>;
+
+        static inline const Vector index0123 =
+            sve_impl::simd_impl<T>::index0123;
 
         static inline constexpr std::size_t size()
         {
@@ -473,21 +529,18 @@ namespace sve::experimental { inline namespace parallelism_v2 {
                 "pointer should be same type as value_type");
             static_assert(is_simd_flag_type_v<Flag>,
                 "use element_aligned or vector_aligned tag");
-            all_true = sve_impl::simd_impl<T>::pred_all_true();
+
             vec = svld1(all_true, ptr);
         }
 
-        // template <typename U>
         inline simd(T val = {})
         {
             vec = sve_impl::simd_impl<T>::fill(val);
-            all_true = sve_impl::simd_impl<T>::pred_all_true();
         }
 
         inline simd(Vector v)
         {
             vec = v;
-            all_true = sve_impl::simd_impl<T>::pred_all_true();
         }
 
         // ----------------------------------------------------------------------
@@ -520,31 +573,22 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         {
             if (idx < 0 || idx > (int) size())
                 return -1;
-
-            auto index = sve_impl::simd_impl<T>::pred_pat_true(SV_VL1);
-            for (int i = 0; i < idx; i++)
-            {
-                index = sve_impl::simd_impl<T>::pred_next(all_true, index);
-            }
-            return svlastb(index, vec);
+            return svlasta(svcmplt(all_true, index0123, T(idx)), vec);
         }
 
         T operator[](int idx) const
         {
-            return get(idx);
+            if (idx < 0 || idx > (int) size())
+                return -1;
+            return svlasta(svcmplt(all_true, index0123, T(idx)), vec);
         }
 
         void set(int idx, T val)
         {
             if (idx < 0 || idx > (int) size())
                 return;
-
-            auto index = sve_impl::simd_impl<T>::pred_pat_true(SV_VL1);
-            for (int i = 0; i < idx; i++)
-            {
-                index = sve_impl::simd_impl<T>::pred_next(all_true, index);
-            }
-            vec = sve_impl::simd_impl<T>::set_helper(vec, index, val);
+            vec = sve_impl::simd_impl<value_type>::set(
+                vec, svcmpeq(all_true, index0123, T(idx)), val);
         }
 
         // ----------------------------------------------------------------------
@@ -554,15 +598,16 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         {
             using type_ = std::decay_t<decltype(x)>;
             using value_type_ = typename type_::value_type;
+            using printable_type =
+                std::conditional_t<std::is_integral_v<value_type_>,
+                    std::conditional_t<std::is_unsigned_v<value_type_>,
+                        uint32_t, int32_t>,
+                    value_type_>;
 
-            auto index =
-                sve_impl::simd_impl<value_type_>::pred_pat_true(SV_VL1);
             os << "( ";
             for (int i = 0; i < (int) x.size(); i++)
             {
-                os << svlastb(index, x.vec) << ' ';
-                index = sve_impl::simd_impl<value_type_>::pred_next(
-                    x.all_true, index);
+                os << printable_type(x[i]) << ' ';
             }
             os << ")";
             return os;
@@ -594,27 +639,27 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         // ----------------------------------------------------------------------
         inline simd& operator++()
         {
-            add(static_cast<T>(1));
+            vec = svadd_x(all_true, vec, static_cast<T>(1));
             return *this;
         }
 
         inline auto operator++(int)
         {
             auto vec_copy = *this;
-            add(static_cast<T>(1));
+            vec = svadd_x(all_true, vec, static_cast<T>(1));
             return vec_copy;
         }
 
         inline simd& operator--()
         {
-            subtract(static_cast<T>(1));
+            vec = svsub_x(all_true, vec, static_cast<T>(1));
             return *this;
         }
 
         inline auto operator--(int)
         {
             auto vec_copy = *this;
-            subtract(static_cast<T>(1));
+            vec = svsub_x(all_true, vec, static_cast<T>(1));
             return vec_copy;
         }
 
@@ -626,7 +671,8 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         inline simd operator-() const
         {
             auto vec_copy = *this;
-            vec_copy.multiply(-1);
+            vec_copy.vec =
+                svmul_x(vec_copy.all_true, vec_copy.vec, static_cast<T>(-1));
             return vec_copy;
         }
 
@@ -635,43 +681,43 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         // ----------------------------------------------------------------------
         inline friend simd operator+(const simd& x, const simd& y)
         {
-            return add(x.vec, y.vec);
+            return svadd_x(x.all_true, x.vec, y.vec);
         }
 
         inline friend simd operator-(const simd& x, const simd& y)
         {
-            return subtract(x.vec, y.vec);
+            return svsub_x(x.all_true, x.vec, y.vec);
         }
 
         inline friend simd operator*(const simd& x, const simd& y)
         {
-            return multiply(x.vec, y.vec);
+            return svmul_x(x.all_true, x.vec, y.vec);
         }
 
         inline friend simd operator/(const simd& x, const simd& y)
         {
-            return divide(x.vec, y.vec);
+            return svdiv_x(x.all_true, x.vec, y.vec);
         }
 
         inline friend simd operator&(const simd& x, const simd& y)
         {
             static_assert(std::is_integral_v<T>,
                 "operator& only works for integeral types");
-            return bitwise_and(x.vec, y.vec);
+            return svand_x(x.all_true, x.vec, y.vec);
         }
 
         inline friend simd operator|(const simd& x, const simd& y)
         {
             static_assert(std::is_integral_v<T>,
                 "operator| only works for integeral types");
-            return bitwise_or(x.vec, y.vec);
+            return svorr_x(x.all_true, x.vec, y.vec);
         }
 
         inline friend simd operator^(const simd& x, const simd& y)
         {
             static_assert(std::is_integral_v<T>,
                 "operator^ only works for integeral types");
-            return bitwise_xor(x.vec, y.vec);
+            return sveor_x(x.all_true, x.vec, y.vec);
         }
 
         // friend simd operator<<(const simd& x, typename std::make_unsigned<T>::type
@@ -691,25 +737,25 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         // ----------------------------------------------------------------------
         inline friend simd& operator+=(simd& x, const simd& y)
         {
-            x.vec = add(x.vec, y.vec);
+            x.vec = svadd_x(x.all_true, x.vec, y.vec);
             return x;
         }
 
         inline friend simd& operator-=(simd& x, const simd& y)
         {
-            x.vec = subtract(x.vec, y.vec);
+            x.vec = svsub_x(x.all_true, x.vec, y.vec);
             return x;
         }
 
         inline friend simd& operator*=(simd& x, const simd& y)
         {
-            x.vec = multiply(x.vec, y.vec);
+            x.vec = svmul_x(x.all_true, x.vec, y.vec);
             return x;
         }
 
         inline friend simd& operator/=(simd& x, const simd& y)
         {
-            x.vec = divide(x.vec, y.vec);
+            x.vec = svdiv_x(x.all_true, x.vec, y.vec);
             return x;
         }
 
@@ -717,7 +763,7 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         {
             static_assert(std::is_integral_v<T>,
                 "operator&= only works for integeral types");
-            x.vec = bitwise_and(x.vec, y.vec);
+            x.vec = svand_x(x.all_true, x.vec, y.vec);
             return x;
         }
 
@@ -725,7 +771,7 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         {
             static_assert(std::is_integral_v<T>,
                 "operator|= only works for integeral types");
-            x.vec = bitwise_or(x.vec, y.vec);
+            x.vec = svorr_x(x.all_true, x.vec, y.vec);
             return x;
         }
 
@@ -733,7 +779,7 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         {
             static_assert(std::is_integral_v<T>,
                 "operator^= only works for integeral types");
-            x.vec = bitwise_xor(x.vec, y.vec);
+            x.vec = sveor_x(x.all_true, x.vec, y.vec);
             return x;
         }
 
@@ -806,6 +852,10 @@ namespace sve::experimental { inline namespace parallelism_v2 {
             const simd<T_, Abi_>& t, const simd<T_, Abi_>& f);
 
         template <typename T_, typename Abi_>
+        inline friend void mask_assign(const simd_mask<T_, Abi_>& msk,
+            simd<T_, Abi_>& v, const simd<T_, Abi_>& val);
+
+        template <typename T_, typename Abi_>
         inline friend simd<T_, Abi_> min(
             const simd<T_, Abi_>& x, const simd<T_, Abi_>& y);
 
@@ -813,38 +863,67 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         inline friend simd<T_, Abi_> max(
             const simd<T_, Abi_>& x, const simd<T_, Abi_>& y);
 
-        // template <typename T_, typename Abi_>
-        // inline friend T_ reduce(const simd<T_, Abi_>& x, std::plus<>)
-        // {
-        //     return svaddv(x.all_true, x.vec);
-        // }
-
-        // template <typename T_, typename Abi_>
-        // inline friend T reduce(const simd<T_, Abi_>& x, std::bit_and<>)
-        // {
-        //     static_assert(std::is_integral_v<T_>,
-        //         "bit_and reduction only works this integeral types");
-        //     return svandv(x.all_true, x.vec);
-        // }
-
-        // template <typename T_, typename Abi_>
-        // inline friend T_ reduce(const simd<T_, Abi_>& x, std::bit_or<>)
-        // {
-        //     static_assert(std::is_integral_v<T_>,
-        //         "bit_or reduction only works this integeral types");
-        //     return svorv(x.all_true, x.vec);
-        // }
-
-        // template <typename T_, typename Abi_>
-        // inline friend T_ reduce(const simd<T_, Abi_>& x, std::bit_xor<>)
-        // {
-        //     static_assert(std::is_integral_v<T_>,
-        //         "bit_xor reduction only works this integeral types");
-        //     return sveorv(x.all_true, x.vec);
-        // }
+        template <typename t_, typename abi_>
+        inline friend simd<t_, abi_> copysign(const simd<t_, abi_>& valSrc, const simd<t_, abi_>& signSrc);
 
         template <typename T_, typename Abi_>
         inline friend simd<T_, Abi_> sqrt(const simd<T_, Abi_>& x);
+
+        template <typename T_, typename Abi_>
+        inline friend simd<T_, Abi_> abs(const simd<T_, Abi_>& x);
+
+        template <typename T_, typename Abi_>
+        inline friend simd<T_, Abi_> fma(const simd<T_, Abi_>& a,
+            const simd<T_, Abi_>& b, const simd<T_, Abi_>& z);
+
+        template <typename T_, typename Abi_, typename Op>
+        inline friend T_ reduce(const simd<T_, Abi_>& x, Op op);
+
+        template <typename T_, typename Abi_, typename Op>
+        inline friend simd<T_, Abi_> inclusive_scan(
+            const simd<T_, Abi_>& x, Op op);
+
+        template <typename T_, typename Abi_, typename Op>
+        inline friend simd<T_, Abi_> exclusive_scan(
+            const simd<T_, Abi_>& x, Op op, T_ init);
+
+        template <typename T_, typename Abi_>
+        inline friend simd<T_, Abi_> index_series(T_ base, T_ step);
+
+        template <typename T_, typename Abi_>
+        inline friend simd<T_, Abi_> compact(
+            const simd_mask<T_, Abi_>& msk, const simd<T_, Abi_>& v);
+
+        template <typename T_, typename Abi_>
+        inline friend simd<T_, Abi_> splice(const simd_mask<T_, Abi_>& msk,
+            const simd<T_, Abi_>& x, const simd<T_, Abi_>& y);
+
+        template <typename T_, typename Abi_>
+        inline friend simd<T_, Abi_> interleave_even(
+            const simd<T_, Abi_>& x, const simd<T_, Abi_>& y);
+
+        template <typename T_, typename Abi_>
+        inline friend simd<T_, Abi_> interleave_odd(
+            const simd<T_, Abi_>& x, const simd<T_, Abi_>& y);
+
+        template <typename T_, typename Abi_>
+        inline friend simd<T_, Abi_> select_even(
+            const simd<T_, Abi_>& x, const simd<T_, Abi_>& y);
+
+        template <typename T_, typename Abi_>
+        inline friend simd<T_, Abi_> select_odd(
+            const simd<T_, Abi_>& x, const simd<T_, Abi_>& y);
+
+        template <typename T_, typename Abi_>
+        inline friend simd<T_, Abi_> lower_half(
+            const simd<T_, Abi_>& x, const simd<T_, Abi_>& y);
+
+        template <typename T_, typename Abi_>
+        inline friend simd<T_, Abi_> upper_half(
+            const simd<T_, Abi_>& x, const simd<T_, Abi_>& y);
+
+        template <typename T_, typename Abi_>
+        inline friend simd<T_, Abi_> reverse(const simd<T_, Abi_>& x);
     };
 
     template <typename T, typename Abi>
@@ -869,12 +948,167 @@ namespace sve::experimental { inline namespace parallelism_v2 {
     }
 
     template <typename T_, typename Abi_>
+    inline simd<T_, Abi_> copysign(const simd<T_, Abi_>& valSrc, const simd<T_, Abi_>& signSrc) {
+        static_assert(
+            std::is_same_v<T_, float64_t>,
+            "vectorized copysign is only implemented for f64 types thus far.");
+        // obtain signbits by using a static -0.0 mask to find them in the signSrc via a bitwise AND
+        const auto signmask = sve_impl::simd_impl<T_>::fill(-0.0);
+        const auto signbits = svand_x(signSrc.all_true, svreinterpret_s64(signSrc.vec), svreinterpret_s64(signmask));
+        // obtains the valuebits by using the inverted signmask via a bitwise ANDNOT
+        const auto absbits = svbic_x(signSrc.all_true, svreinterpret_s64(valSrc.vec), svreinterpret_s64(signmask));
+        // Results is just the two bitsequeences combined via a bitwise OR
+        const auto result = svorr_x(signSrc.all_true, signbits, absbits);
+        // Return bit sequence as a f64 type
+        return svreinterpret_f64(result);
+    }
+
+    template <typename T_, typename Abi_>
     inline simd<T_, Abi_> sqrt(const simd<T_, Abi_>& x)
     {
-        static_assert(std::is_floating_point_v<T_> ||
-                    std::is_same_v<T_, float16_t>,
-                    "sqrt only works this floating point types");
+        static_assert(
+            std::is_floating_point_v<T_> || std::is_same_v<T_, float16_t>,
+            "sqrt only works this floating point types");
         return svsqrt_x(x.all_true, x.vec);
+    }
+
+    template <typename T_, typename Abi_>
+    inline simd<T_, Abi_> abs(const simd<T_, Abi_>& x)
+    {
+        return svabs_x(x.all_true, x.vec);
+    }
+
+    template <typename T_, typename Abi_>
+    inline simd<T_, Abi_> fma(const simd<T_, Abi_>& a, const simd<T_, Abi_>& b,
+        const simd<T_, Abi_>& z)
+    {
+        return svmad_m(a.all_true, a.vec, b.vec, z.vec);
+    }
+
+    template <typename T, typename Abi, typename Op = std::plus<>>
+    inline T reduce(const simd<T, Abi>& x, Op op = {})
+    {
+        using simd_t = simd<T, Abi>;
+        auto x_vec = x.vec;
+
+        for (int i = 1; i < simd_t::size(); i *= 2)
+        {
+            x_vec =
+                op(simd_t(svzip1(x_vec, x_vec)), simd_t(svzip2(x_vec, x_vec)))
+                    .vec;
+        }
+        return simd_t(x_vec).first();
+    }
+
+    template <typename T_, typename Abi_, typename Op = std::plus<>>
+    inline simd<T_, Abi_> inclusive_scan(const simd<T_, Abi_>& x, Op op = {})
+    {
+        using simd_t = simd<T_, Abi_>;
+        auto x_vec = x.vec;
+        auto iota_vec = sve_impl::simd_impl<T_>::index0123;
+        auto local_all_true = x.all_true;
+        if constexpr (simd_t::size() >= 2)
+        {
+            x_vec = svsplice(svcmplt(local_all_true, iota_vec, T_(1)), x_vec,
+                op(simd_t(x_vec), simd_t(svext(x_vec, x_vec, 1))).vec);
+        }
+        if constexpr (simd_t::size() >= 4)
+        {
+            x_vec = svsplice(svcmplt(local_all_true, iota_vec, T_(2)), x_vec,
+                op(simd_t(x_vec), simd_t(svext(x_vec, x_vec, 2))).vec);
+        }
+        if constexpr (simd_t::size() >= 8)
+        {
+            x_vec = svsplice(svcmplt(local_all_true, iota_vec, T_(4)), x_vec,
+                op(simd_t(x_vec), simd_t(svext(x_vec, x_vec, 4))).vec);
+        }
+        if constexpr (simd_t::size() >= 16)
+        {
+            x_vec = svsplice(svcmplt(local_all_true, iota_vec, T_(8)), x_vec,
+                op(simd_t(x_vec), simd_t(svext(x_vec, x_vec, 8))).vec);
+        }
+        if constexpr (simd_t::size() >= 32)
+        {
+            x_vec = svsplice(svcmplt(local_all_true, iota_vec, T_(16)), x_vec,
+                op(simd_t(x_vec), simd_t(svext(x_vec, x_vec, 16))).vec);
+        }
+        if constexpr (simd_t::size() == 64)
+        {
+            x_vec = svsplice(svcmplt(local_all_true, iota_vec, T_(32)), x_vec,
+                op(simd_t(x_vec), simd_t(svext(x_vec, x_vec, 32))).vec);
+        }
+        return x_vec;
+    }
+
+    template <typename T_, typename Abi_, typename Op = std::plus<>>
+    inline simd<T_, Abi_> exclusive_scan(
+        const simd<T_, Abi_>& x, Op op = {}, T_ init = {})
+    {
+        auto x_vec = x.vec;
+        x_vec = svinsr(x.vec, init);
+        return inclusive_scan(simd<T_, Abi_>(x_vec));
+    }
+
+    template <typename T_, typename Abi_ = simd_abi::sve_abi>
+    inline simd<T_, Abi_> index_series(T_ base, T_ step)
+    {
+        if constexpr (std::is_floating_point_v<T_> ||
+            std::is_same_v<T_, float16_t>)
+        {
+            return exclusive_scan(simd<T_, Abi_>(step)) + base;
+        }
+        else
+        {
+            return sve_impl::simd_impl<T_>::index_series(base, step);
+        }
+    }
+
+    template <typename T_, typename Abi_>
+    inline simd<T_, Abi_> interleave_even(
+        const simd<T_, Abi_>& x, const simd<T_, Abi_>& y)
+    {
+        return svtrn1(x.vec, y.vec);
+    }
+
+    template <typename T_, typename Abi_>
+    inline simd<T_, Abi_> interleave_odd(
+        const simd<T_, Abi_>& x, const simd<T_, Abi_>& y)
+    {
+        return svtrn2(x.vec, y.vec);
+    }
+
+    template <typename T_, typename Abi_>
+    inline simd<T_, Abi_> select_even(
+        const simd<T_, Abi_>& x, const simd<T_, Abi_>& y)
+    {
+        return svuzp1(x.vec, y.vec);
+    }
+
+    template <typename T_, typename Abi_>
+    inline simd<T_, Abi_> select_odd(
+        const simd<T_, Abi_>& x, const simd<T_, Abi_>& y)
+    {
+        return svuzp2(x.vec, y.vec);
+    }
+
+    template <typename T_, typename Abi_>
+    inline simd<T_, Abi_> lower_half(
+        const simd<T_, Abi_>& x, const simd<T_, Abi_>& y)
+    {
+        return svzip1(x.vec, y.vec);
+    }
+
+    template <typename T_, typename Abi_>
+    inline simd<T_, Abi_> upper_half(
+        const simd<T_, Abi_>& x, const simd<T_, Abi_>& y)
+    {
+        return svzip2(x.vec, y.vec);
+    }
+
+    template <typename T_, typename Abi_>
+    inline simd<T_, Abi_> reverse(const simd<T_, Abi_>& x)
+    {
+        return svrev(x.vec);
     }
 
     template <typename T, typename Abi>
@@ -882,13 +1116,18 @@ namespace sve::experimental { inline namespace parallelism_v2 {
     {
     private:
         using Predicate = typename sve_impl::Predicate;
-        Predicate pred, all_true;
+        static inline constexpr int T_size = sizeof(T);
+        Predicate pred;
+        static inline const Predicate all_true =
+            sve_impl::simd_impl_<T_size>::all_true();
+        ;
 
     public:
         using value_type = bool;
         using simd_type = simd<T, Abi>;
         using abi_type = Abi;
 
+        static inline const auto index0123 = simd_type::index0123;
         static inline constexpr std::size_t size()
         {
             return simd<T, Abi>::size();
@@ -904,37 +1143,32 @@ namespace sve::experimental { inline namespace parallelism_v2 {
 
         inline simd_mask(bool val = false)
         {
-            all_true = sve_impl::simd_impl<T>::pred_all_true();
             if (val)
-                pred = sve_impl::simd_impl<T>::pred_all_true();
+            {
+                pred = sve_impl::simd_impl_<T_size>::all_true();
+            }
             else
                 pred = svpfalse();
         }
 
         inline simd_mask(Predicate p)
         {
-            all_true = sve_impl::simd_impl<T>::pred_all_true();
             pred = p;
         }
 
         // ----------------------------------------------------------------------
         //  get and set
         // ----------------------------------------------------------------------
-        int get(int idx) const
+        bool get(int idx) const
         {
             if (idx < 0 || idx > (int) size())
                 return -1;
 
-            auto index = sve_impl::simd_impl<T>::pred_pat_true(SV_VL1);
-            for (int i = 0; i < idx; i++)
-            {
-                index = sve_impl::simd_impl<T>::pred_next(all_true, index);
-            }
-            index = svand_z(all_true, pred, index);
-            return sve_impl::simd_impl<T>::pred_count(all_true, index);
+            return sve_impl::simd_impl_<T_size>::count(
+                svand_z(all_true, svcmpeq(all_true, index0123, T(idx)), pred));
         }
 
-        T operator[](int idx) const
+        bool operator[](int idx) const
         {
             return get(idx);
         }
@@ -944,11 +1178,7 @@ namespace sve::experimental { inline namespace parallelism_v2 {
             if (idx < 0 || idx > (int) size())
                 return;
 
-            auto index = sve_impl::simd_impl<T>::pred_pat_true(SV_VL1);
-            for (int i = 0; i < idx; i++)
-            {
-                index = sve_impl::simd_impl<T>::pred_next(all_true, index);
-            }
+            auto index = svcmpeq(all_true, index0123, T(idx));
             if (val)
                 pred = svorr_z(all_true, pred, index);
             else
@@ -964,16 +1194,10 @@ namespace sve::experimental { inline namespace parallelism_v2 {
             using simd_type_ = typename type_::simd_type;
             using value_type_ = typename simd_type::value_type;
 
-            auto index =
-                sve_impl::simd_impl<value_type_>::pred_pat_true(SV_VL1);
             os << "( ";
-            for (int i = 0; i < sve_impl::simd_impl<value_type_>::size; i++)
+            for (int i = 0; i < (int) x.size(); i++)
             {
-                os << sve_impl::simd_impl<value_type_>::pred_count(
-                          x.all_true, svand_z(x.all_true, x.pred, index))
-                   << ' ';
-                index = sve_impl::simd_impl<value_type_>::pred_next(
-                    x.all_true, index);
+                os << x[i] << ' ';
             }
             os << ")";
             return os;
@@ -1064,7 +1288,7 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         // ----------------------------------------------------------------------
         inline int popcount() const
         {
-            return sve_impl::simd_impl<T>::pred_count(all_true, pred);
+            return sve_impl::simd_impl_<T_size>::count(pred);
         }
 
         inline bool all_of() const
@@ -1090,13 +1314,13 @@ namespace sve::experimental { inline namespace parallelism_v2 {
 
         inline int find_first_set() const
         {
-            auto index = sve_impl::simd_impl<T>::pred_pat_true(SV_VL1);
+            auto index = sve_impl::simd_impl_<T_size>::first_true();
             for (int i = 0; i < (int) size(); i++)
             {
-                if (sve_impl::simd_impl<T>::pred_count(
-                        all_true, svand_z(all_true, pred, index)))
+                if (sve_impl::simd_impl_<T_size>::count(
+                        svand_z(all_true, pred, index)))
                     return i;
-                index = sve_impl::simd_impl<T>::pred_next(all_true, index);
+                index = sve_impl::simd_impl_<T_size>::next_true(index);
             }
             return -1;
         }
@@ -1104,13 +1328,13 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         inline int find_last_set() const
         {
             int ans = -1;
-            auto index = sve_impl::simd_impl<T>::pred_pat_true(SV_VL1);
+            auto index = sve_impl::simd_impl_<T_size>::first_true();
             for (int i = 0; i < (int) size(); i++)
             {
-                if (sve_impl::simd_impl<T>::pred_count(
-                        all_true, svand_z(all_true, pred, index)))
+                if (sve_impl::simd_impl_<T_size>::count(
+                        svand_z(all_true, pred, index)))
                     ans = i;
-                index = sve_impl::simd_impl<T>::pred_next(all_true, index);
+                index = sve_impl::simd_impl_<T_size>::next_true(index);
             }
             return ans;
         }
@@ -1119,6 +1343,18 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         template <typename T_, typename Abi_>
         inline friend simd<T_, Abi_> choose(const simd_mask<T_, Abi_>& msk,
             const simd<T_, Abi_>& t, const simd<T_, Abi_>& f);
+
+        template <typename T_, typename Abi_>
+        inline friend void mask_assign(const simd_mask<T_, Abi_>& msk,
+            simd<T_, Abi_>& v, const simd<T_, Abi_>& val);
+
+        template <typename T_, typename Abi_>
+        inline friend simd<T_, Abi_> compact(
+            const simd_mask<T_, Abi_>& msk, const simd<T_, Abi_>& v);
+
+        template <typename T_, typename Abi_>
+        inline friend simd<T_, Abi_> splice(const simd_mask<T_, Abi_>& msk,
+            const simd<T_, Abi_>& x, const simd<T_, Abi_>& y);
     };
 
     template <class T, class Abi>
@@ -1171,10 +1407,27 @@ namespace sve::experimental { inline namespace parallelism_v2 {
     }
 
     template <typename T, typename Abi>
-    inline void mask_assign(const simd_mask<T, Abi>& msk,
-        simd<T, Abi>& v, const simd<T, Abi>& val)
+    inline void mask_assign(
+        const simd_mask<T, Abi>& msk, simd<T, Abi>& v, const simd<T, Abi>& val)
     {
         v.vec = svsel(msk.pred, val.vec, v.vec);
+    }
+
+    template <typename T, typename Abi>
+    inline simd<T, Abi> compact(
+        const simd_mask<T, Abi>& msk, const simd<T, Abi>& v)
+    {
+        static_assert(sizeof(T) >= 4,
+            "compact function only works with airthmetic types which\
+         are atleast 4 bytes in size");
+        return svcompact(msk.pred, v.vec);
+    }
+
+    template <typename T_, typename Abi_>
+    inline simd<T_, Abi_> splice(const simd_mask<T_, Abi_>& msk,
+        const simd<T_, Abi_>& x, const simd<T_, Abi_>& y)
+    {
+        return svsplice(msk.pred, x.vec, y.vec);
     }
 }}    // namespace sve::experimental::parallelism_v2
 #endif
