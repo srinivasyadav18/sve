@@ -991,7 +991,7 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         using simd_t = simd<T, Abi>;
         auto x_vec = x.vec;
 
-        for (int i = 1; i < simd_t::size(); i *= 2)
+        for (std::size_t i = 1; i < simd_t::size(); i *= 2)
         {
             x_vec =
                 op(simd_t(svzip1(x_vec, x_vec)), simd_t(svzip2(x_vec, x_vec)))
@@ -1120,7 +1120,6 @@ namespace sve::experimental { inline namespace parallelism_v2 {
         Predicate pred;
         static inline const Predicate all_true =
             sve_impl::simd_impl_<T_size>::all_true();
-        ;
 
     public:
         using value_type = bool;
