@@ -11,5 +11,5 @@ foreach(perf_test ${perf_tests})
 
     target_link_libraries(${target} sve)
 
-    add_test(NAME ${target} COMMAND ${target})
+    add_test(NAME ${target} COMMAND ${CMAKE_CROSSCOMPILING_CMD} ${target})
 endforeach()

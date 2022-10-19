@@ -33,7 +33,7 @@ target_include_directories(
 
 target_compile_features(sve INTERFACE cxx_std_20)
 target_compile_definitions(sve INTERFACE SVE_LEN=${SVE_LENGTH})
-target_compile_options(sve INTERFACE "-mcpu=native" "-msve-vector-bits=${SVE_LENGTH}")
+target_compile_options(sve INTERFACE "-msve-vector-bits=${SVE_LENGTH}")
 
 if(BUILD_TESTING AND SVE_BUILD_TESTING)
   add_subdirectory(tests)
